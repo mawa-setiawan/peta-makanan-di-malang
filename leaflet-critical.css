@@ -1,0 +1,155 @@
+/*
+  Leaflet critical layout CSS fallback.
+  File ini sengaja disertakan lokal supaya tile peta tidak pecah/kotak-kotak
+  jika leaflet.css dari CDN terlambat, gagal dimuat, atau diblokir.
+*/
+.leaflet-container {
+  position: relative;
+  overflow: hidden;
+  outline: 0;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  background: #e7efe5;
+}
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.leaflet-tile {
+  width: 256px;
+  height: 256px;
+  border: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.leaflet-tile-loaded {
+  visibility: inherit;
+}
+.leaflet-tile-container,
+.leaflet-pane {
+  transform-origin: 0 0;
+}
+.leaflet-map-pane {
+  z-index: 400;
+}
+.leaflet-tile-pane {
+  z-index: 200;
+}
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+.leaflet-shadow-pane {
+  z-index: 500;
+}
+.leaflet-marker-pane {
+  z-index: 600;
+}
+.leaflet-tooltip-pane {
+  z-index: 650;
+}
+.leaflet-popup-pane {
+  z-index: 700;
+}
+.leaflet-control {
+  position: relative;
+  z-index: 800;
+  pointer-events: auto;
+}
+.leaflet-top,
+.leaflet-bottom {
+  position: absolute;
+  z-index: 1000;
+  pointer-events: none;
+}
+.leaflet-top { top: 0; }
+.leaflet-right { right: 0; }
+.leaflet-bottom { bottom: 0; }
+.leaflet-left { left: 0; }
+.leaflet-control {
+  float: left;
+  clear: both;
+}
+.leaflet-right .leaflet-control { float: right; }
+.leaflet-top .leaflet-control { margin-top: 10px; }
+.leaflet-bottom .leaflet-control { margin-bottom: 10px; }
+.leaflet-left .leaflet-control { margin-left: 10px; }
+.leaflet-right .leaflet-control { margin-right: 10px; }
+.leaflet-control-zoom {
+  border: 1px solid rgba(0,0,0,.18);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.leaflet-control-zoom a {
+  display: block;
+  width: 34px;
+  height: 34px;
+  line-height: 34px;
+  text-align: center;
+  text-decoration: none;
+  color: #222;
+  background: #fff;
+  font-size: 20px;
+  font-weight: 700;
+}
+.leaflet-control-zoom a + a {
+  border-top: 1px solid #ddd;
+}
+.leaflet-popup {
+  position: absolute;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.leaflet-popup-content-wrapper {
+  padding: 1px;
+  text-align: left;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  line-height: 1.4;
+}
+.leaflet-popup-tip-container {
+  width: 40px;
+  height: 20px;
+  position: absolute;
+  left: 50%;
+  margin-left: -20px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.leaflet-popup-tip {
+  width: 16px;
+  height: 16px;
+  margin: -8px auto 0;
+  transform: rotate(45deg);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+.leaflet-popup-close-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px 6px 0 0;
+  border: none;
+  text-align: center;
+  width: 24px;
+  height: 24px;
+  font: 18px/24px Tahoma, Verdana, sans-serif;
+  color: #666;
+  text-decoration: none;
+  background: transparent;
+}

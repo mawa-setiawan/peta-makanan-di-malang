@@ -90,7 +90,8 @@ const elements = {
   descriptionInput: document.getElementById("descriptionInput"),
   photoInput: document.getElementById("photoInput"),
   savePlaceButton: document.getElementById("savePlaceButton"),
-  formMessage: document.getElementById("formMessage")
+  formMessage: document.getElementById("formMessage"),
+  exportDataButton: document.getElementById("exportDataButton")
 };
 
 let app;
@@ -106,6 +107,9 @@ let unsubscribeComments = null;
 let allPlaces = [];
 let markers = new Map();
 let markerLayer;
+let mapResizeObserver;
+let tileLayer;
+let tileErrorCount = 0;
 
 fillSelect(elements.areaFilter, ["Semua area", ...AREAS], ["", ...AREAS]);
 fillSelect(elements.categoryFilter, ["Semua kategori", ...CATEGORIES], ["", ...CATEGORIES]);
@@ -151,6 +155,7 @@ function bindUi() {
   elements.searchInput.addEventListener("input", renderAll);
   elements.areaFilter.addEventListener("change", renderAll);
   elements.categoryFilter.addEventListener("change", renderAll);
+  elements.exportDataButton?.addEventListener("click", exportVisibleDataJson);
 
   elements.closeDetailButton.addEventListener("click", clearDetail);
   elements.cancelDialogButton.addEventListener("click", closePlaceDialog);
@@ -217,13 +222,33 @@ function enterApp() {
   elements.appShell.classList.remove("hidden");
   renderUserChip();
   renderModeChip();
-  initMapOnce();
-  subscribePlacesOnce();
-  setTimeout(() => map?.invalidateSize(), 120);
+
+  // Leaflet harus dibuat ketika container sudah benar-benar terlihat.
+  // requestAnimationFrame + invalidate bertahap mencegah peta berkedip/hilang
+  // saat layout GitHub Pages/browser selesai menghitung ukuran kolom.
+  requestAnimationFrame(() => {
+    initMapOnce();
+    resizeMapStably();
+    subscribePlacesOnce();
+  });
 }
 
 function initMapOnce() {
-  if (map) return;
+  if (!window.L) {
+    elements.mapHint.textContent = "Library peta belum termuat. Coba refresh halaman atau cek koneksi internet.";
+    return;
+  }
+
+  const mapEl = document.getElementById("map");
+  if (!mapEl || mapEl.clientWidth < 40 || mapEl.clientHeight < 40) {
+    setTimeout(initMapOnce, 120);
+    return;
+  }
+
+  if (map) {
+    resizeMapStably();
+    return;
+  }
 
   map = L.map("map", {
     center: MALANG_CENTER,
@@ -231,13 +256,38 @@ function initMapOnce() {
     minZoom: 11,
     maxZoom: 19,
     maxBounds: MALANG_BOUNDS,
-    maxBoundsViscosity: 1
+    maxBoundsViscosity: 0.85,
+    preferCanvas: true,
+    zoomAnimation: false,
+    fadeAnimation: false,
+    markerZoomAnimation: false,
+    worldCopyJump: false
   });
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  map.setView(MALANG_CENTER, 13, { animate: false });
+
+  tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
+    maxNativeZoom: 19,
+    keepBuffer: 5,
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    noWrap: true,
+    crossOrigin: true,
     attribution: "&copy; OpenStreetMap contributors"
   }).addTo(map);
+
+  tileLayer.on("tileerror", () => {
+    tileErrorCount += 1;
+    if (tileErrorCount <= 3) {
+      elements.mapHint.textContent = "Tile peta sedang lambat dimuat. Data kuliner tetap aman; coba geser/zoom pelan atau refresh koneksi.";
+    }
+  });
+
+  map.whenReady(() => {
+    resizeMapStably();
+    setTimeout(() => map.setView(MALANG_CENTER, 13, { animate: false }), 80);
+  });
 
   const bounds = L.latLngBounds(MALANG_BOUNDS);
   L.rectangle(bounds, {
@@ -257,6 +307,34 @@ function initMapOnce() {
       return;
     }
     openPlaceDialog(latlng);
+  });
+
+  setupMapResizeStabilizer();
+  resizeMapStably();
+}
+
+function resizeMapStably() {
+  if (!map) return;
+  [0, 60, 140, 300, 700, 1200].forEach((delay) => {
+    setTimeout(() => {
+      map?.invalidateSize({ pan: false, debounceMoveend: true });
+    }, delay);
+  });
+}
+
+function setupMapResizeStabilizer() {
+  if (mapResizeObserver) return;
+
+  const mapWrap = document.querySelector(".map-wrap");
+  if (window.ResizeObserver && mapWrap) {
+    mapResizeObserver = new ResizeObserver(() => resizeMapStably());
+    mapResizeObserver.observe(mapWrap);
+  }
+
+  window.addEventListener("resize", resizeMapStably, { passive: true });
+  window.addEventListener("orientationchange", resizeMapStably, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) resizeMapStably();
   });
 }
 
@@ -635,6 +713,30 @@ async function saveComment() {
   } finally {
     button.disabled = false;
   }
+}
+
+function exportVisibleDataJson() {
+  const exportData = {
+    app: "Peta Kuliner Malang",
+    version: "v4-stable-map",
+    exportedAt: new Date().toISOString(),
+    storageMode: firebaseConfigured ? "firebase-online" : "local-demo",
+    note: firebaseConfigured
+      ? "Export ini berisi daftar tempat yang sedang terbaca oleh aplikasi. Komentar subkoleksi Firebase diekspor dari halaman detail satu per satu, bukan backup penuh."
+      : "Export ini berisi data lokal dari browser ini, termasuk komentar lokal.",
+    places: allPlaces,
+    localComments: firebaseConfigured ? undefined : getAllLocalComments()
+  };
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `peta-kuliner-malang-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function upsertPrivateContributor() {

@@ -4,10 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Peta Kuliner Malang</title>
-  <meta name="description" content="Peta kontribusi kuliner Kota Malang berbasis nama dan email kontributor, komentar, dan foto." />
+  <meta name="description" content="Peta kontribusi kuliner Kota Malang berbasis nama dan email kontributor, komentar, foto, dan statistik makanan populer." />
   <link rel="preconnect" href="https://www.gstatic.com" />
-  <link rel="preconnect" href="https://tile.openstreetmap.org" />
+  <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQnyFiaEE3J4sQI4jlbEw5gr3xRroA=" crossorigin="" />
+  <link rel="stylesheet" href="leaflet-critical.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -49,6 +50,7 @@
       <div class="topbar-actions">
         <div id="modeChip" class="mode-chip"></div>
         <div id="userChip" class="user-chip"></div>
+        <button id="exportDataButton" class="ghost-button" type="button">Export JSON</button>
         <button id="changeIdentityButton" class="ghost-button">Ganti identitas</button>
       </div>
     </header>
@@ -89,8 +91,8 @@
       </aside>
 
       <section class="map-wrap" aria-label="Peta Kota Malang">
-        <div id="map"></div>
-        <div class="map-badge">Batas peta dikunci di area Kota Malang</div>
+        <div id="map" aria-label="Peta normal Kota Malang"></div>
+        <div class="map-badge">Peta normal Kota Malang</div>
       </section>
 
       <aside class="sidebar right-sidebar">

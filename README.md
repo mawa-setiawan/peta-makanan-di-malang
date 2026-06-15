@@ -1,4 +1,4 @@
-# Peta Kuliner Malang - Static GitHub Pages
+# Peta Kuliner Malang - Static GitHub Pages v4
 
 Ini adalah aplikasi web HTML statis untuk membuat peta kontribusi makanan khusus Kota Malang.
 
@@ -9,11 +9,36 @@ Versi ini **tidak memakai Google Login**. Pengunjung cukup mengisi:
 
 Setelah itu mereka bisa:
 
-- Melihat peta Kota Malang
+- Melihat peta Kota Malang yang dibatasi ke area Malang
 - Menambah titik kuliner dengan klik lokasi di peta
 - Mengisi nama tempat, makanan populer, area, kategori, kisaran harga, catatan, dan foto
 - Memberi komentar di titik kuliner
 - Melihat makanan populer per area berdasarkan jumlah kontribusi
+- Export data JSON dari data yang sedang terbaca di aplikasi
+
+## Perubahan v4
+
+- Peta dibuat lebih stabil saat pertama muncul.
+- Leaflet diinisialisasi setelah halaman benar-benar terlihat.
+- Ukuran peta dikunci lebih stabil agar tidak berkedip/hilang saat layout berubah.
+- Ditambahkan `ResizeObserver`, `resize`, `orientationchange`, dan `visibilitychange` untuk memanggil ulang `invalidateSize()` secara aman.
+- Animasi zoom/fade Leaflet dimatikan agar tile tidak terasa berkedip pada browser/perangkat tertentu.
+- Tile peta memakai URL OpenStreetMap langsung tanpa subdomain acak agar lebih konsisten.
+- Ditambahkan tombol **Export JSON** untuk backup/manual arsip data.
+
+## Tentang simpan otomatis ke file GitHub
+
+GitHub Pages adalah hosting static site. Artinya file HTML, CSS, dan JavaScript yang kamu push ke repository akan diterbitkan menjadi website.
+
+Pengunjung website **tidak bisa langsung menulis data baru ke file repository GitHub** hanya dari HTML biasa.
+
+Secara teknis GitHub punya REST API untuk membuat/mengubah file repository, tetapi API itu butuh token akses. Token seperti itu tidak aman jika ditaruh di `app.js` atau `index.html`, karena semua pengunjung bisa melihatnya dari browser.
+
+Jadi pilihan aman:
+
+1. **Firebase** untuk data publik online. Ini rekomendasi utama.
+2. **Export JSON** dari aplikasi, lalu kamu upload manual ke GitHub sebagai backup.
+3. Kalau nanti ingin benar-benar auto-commit ke GitHub, perlu backend/serverless function yang menyimpan token secara rahasia. Itu sudah bukan HTML statis murni.
 
 ## Penting: dua mode aplikasi
 
@@ -59,7 +84,7 @@ Pengunjung tetap **tidak login**. Mereka hanya mengisi nama dan email.
 
 ## Upload ke GitHub Pages
 
-Struktur file di repository:
+Struktur file di repository harus seperti ini, langsung di root repository:
 
 ```text
 index.html
@@ -71,6 +96,8 @@ firestore.rules
 storage.rules
 README.md
 ```
+
+Jangan upload folder pembungkusnya saja. Upload isi filenya langsung.
 
 Lalu di GitHub:
 
@@ -113,8 +140,27 @@ Konsekuensinya:
 
 - `index.html` → halaman utama aplikasi
 - `styles.css` → tampilan aplikasi
-- `app.js` → logika peta, form, komentar, foto, dan Firebase
+- `app.js` → logika peta, form, komentar, foto, export JSON, dan Firebase
 - `firebase-config.js` → koneksi ke Firebase
 - `setup-wizard.html` → alat bantu membuat config tanpa coding
 - `firestore.rules` → aturan database
 - `storage.rules` → aturan upload foto
+
+
+## Update v5 - Perbaikan peta kotak-kotak / tile pecah
+
+Versi ini menambahkan `leaflet-critical.css` lokal. File ini membuat posisi tile peta tetap benar walaupun CSS Leaflet dari CDN gagal atau terlambat dimuat. Jika peta sebelumnya terlihat seperti potongan kotak dari banyak kota berbeda, penyebab paling umum adalah CSS Leaflet tidak termuat.
+
+Layout juga disederhanakan: di desktop panel kontrol berada di kiri, peta normal Kota Malang berada besar di kanan. Di layar kecil, peta tampil di atas agar lebih rapi.
+
+Saat upload ke GitHub Pages, pastikan file berikut ikut ter-upload ke root repository:
+
+- `index.html`
+- `styles.css`
+- `leaflet-critical.css`
+- `app.js`
+- `firebase-config.js`
+- `setup-wizard.html`
+- `firestore.rules`
+- `storage.rules`
+
