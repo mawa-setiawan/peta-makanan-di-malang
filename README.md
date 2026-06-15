@@ -1,123 +1,146 @@
 # Peta Kuliner Malang - Static GitHub Pages
 
-Aplikasi web statis untuk peta makanan khusus Kota Malang. Bisa diupload langsung ke GitHub Pages tanpa Node.js, tanpa npm, tanpa build step, dan tanpa Visual Studio.
+Aplikasi ini dibuat sebagai **static web app**. Kamu cukup upload file ke GitHub Pages. Tidak perlu Visual Studio, Node.js, npm, server pribadi, atau build step.
 
-## Fitur
+Fitur utama:
 
 - Login Google via Firebase Authentication.
-- Peta Leaflet + OpenStreetMap dengan area dibatasi sekitar Kota Malang.
-- Kontribusi titik kuliner: nama tempat, makanan populer, area, kategori, harga, catatan, dan foto.
-- Komentar per titik kuliner.
-- Daftar makanan populer berdasarkan jumlah kontribusi per area.
-- Filter area, kategori, dan pencarian makanan/tempat.
-- Identitas kontributor tersimpan dari akun Google: UID, nama, email, dan foto profil.
+- Peta Kota Malang via Leaflet + OpenStreetMap.
+- Tambah titik kuliner dengan klik lokasi peta.
+- Isi nama tempat, makanan populer, area, kategori, harga, catatan, dan foto.
+- Komentar di setiap titik kuliner.
+- Statistik makanan paling sering dikontribusikan per area.
+- Filter area, kategori, dan pencarian.
 
-## Struktur file
+## Kenapa perlu Firebase?
+
+GitHub Pages hanya menyajikan file statis seperti HTML, CSS, dan JavaScript. Supaya aplikasi bisa punya login Google, database komentar, dan upload gambar, kita butuh layanan backend. Di paket ini backend-nya memakai Firebase.
+
+Firebase yang dipakai:
+
+1. **Authentication** untuk login Google.
+2. **Cloud Firestore** untuk menyimpan titik kuliner dan komentar.
+3. **Firebase Storage** untuk menyimpan foto.
+
+## Konfigurasi tanpa coding
+
+Paket ini punya file:
 
 ```text
-index.html          # Halaman utama
-styles.css          # Tampilan UI
-app.js              # Logika aplikasi, Firebase, peta, komentar, upload foto
-firebase-config.js  # Tempat menaruh konfigurasi Firebase kamu
-firestore.rules     # Rules Firestore yang disarankan
-storage.rules       # Rules Storage yang disarankan
-README.md           # Panduan ini
+setup-wizard.html
 ```
 
-## 1. Buat Firebase project
+Fungsinya membuat file `firebase-config.js` secara otomatis dari konfigurasi Firebase yang kamu salin.
+
+Langkah singkat:
 
 1. Buka Firebase Console.
-2. Buat project baru, misalnya `peta-kuliner-malang`.
-3. Tambahkan app Web.
-4. Salin konfigurasi `firebaseConfig`.
-5. Buka file `firebase-config.js`, lalu ganti semua nilai `ISI_...` dengan konfigurasi dari Firebase.
-
-Contoh bentuknya:
+2. Buat project baru, misalnya `malang-food-map`.
+3. Tambahkan Web App dari ikon `</>`.
+4. Salin konfigurasi yang bentuknya seperti:
 
 ```js
-window.MALANG_FOOD_MAP_FIREBASE_CONFIG = {
-  apiKey: "AIza...",
-  authDomain: "nama-project.firebaseapp.com",
-  projectId: "nama-project",
-  storageBucket: "nama-project.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:xxxx"
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
 };
 ```
 
-Catatan: konfigurasi Firebase Web memang akan terlihat di browser. Keamanan utama tetap harus lewat Firebase Security Rules dan pembatasan domain.
+5. Buka `setup-wizard.html` di browser.
+6. Tempel konfigurasi itu.
+7. Klik **Buat file firebase-config.js**.
+8. Download hasilnya.
+9. Upload file hasil download untuk mengganti `firebase-config.js` lama di repository GitHub.
 
-## 2. Aktifkan Google Login
+## Checklist Firebase
 
-1. Firebase Console > Authentication > Sign-in method.
-2. Aktifkan provider Google.
-3. Setelah web GitHub Pages aktif, buka Authentication > Settings > Authorized domains.
-4. Tambahkan domain GitHub Pages kamu, misalnya:
+### 1. Aktifkan Google Login
+
+Firebase Console → Authentication → Sign-in method → Google → Enable → Save.
+
+### 2. Tambahkan domain GitHub Pages
+
+Firebase Console → Authentication → Settings → Authorized domains.
+
+Tambahkan domain GitHub Pages kamu, contoh:
 
 ```text
 username.github.io
 ```
 
-Kalau pakai custom domain, tambahkan juga domain custom tersebut.
+Kalau kamu pakai custom domain, tambahkan juga domain itu.
 
-## 3. Aktifkan Firestore
+### 3. Aktifkan Firestore
 
-1. Firebase Console > Firestore Database.
-2. Create database.
-3. Pilih mode production.
-4. Buka tab Rules.
-5. Salin isi file `firestore.rules`, lalu Publish.
+Firebase Console → Firestore Database → Create database.
 
-## 4. Aktifkan Storage
-
-1. Firebase Console > Storage.
-2. Create bucket.
-3. Buka tab Rules.
-4. Salin isi file `storage.rules`, lalu Publish.
-
-Foto dibatasi dari sisi aplikasi dan rules maksimal 5 MB per file.
-
-## 5. Upload ke GitHub Pages
-
-Cara paling sederhana:
-
-1. Buat repository baru di GitHub, misalnya `peta-kuliner-malang`.
-2. Upload semua file di folder ini ke root repository.
-3. Masuk ke repository > Settings > Pages.
-4. Source: Deploy from a branch.
-5. Branch: `main`, folder: `/root`.
-6. Simpan.
-7. Buka link yang diberikan GitHub Pages.
-
-Biasanya linknya seperti ini:
+Lalu buka tab Rules, tempel isi file:
 
 ```text
-https://username.github.io/peta-kuliner-malang/
+firestore.rules
 ```
 
-## 6. Uji cepat
+Klik Publish.
 
-1. Buka link GitHub Pages.
-2. Login dengan Google.
-3. Klik `Tambah titik kuliner`.
-4. Klik lokasi di peta Malang.
-5. Isi data makanan dan upload foto.
-6. Buka marker yang muncul, lalu coba komentar.
+### 4. Aktifkan Storage
 
-## 7. Penyesuaian batas Kota Malang
+Firebase Console → Storage → Get started.
 
-Batas saat ini memakai bounding box kasar sekitar Kota Malang agar peta tidak bisa digeser jauh keluar kota. Kalau ingin lebih presisi memakai batas administratif polygon, edit bagian ini di `app.js`:
+Lalu buka tab Rules, tempel isi file:
+
+```text
+storage.rules
+```
+
+Klik Publish.
+
+## Upload ke GitHub Pages
+
+1. Buat repository GitHub baru.
+2. Upload semua file dari folder ini ke root repository.
+3. Masuk ke Settings → Pages.
+4. Source: Deploy from a branch.
+5. Branch: `main`.
+6. Folder: `/root`.
+7. Save.
+8. Buka link GitHub Pages yang diberikan GitHub.
+
+## File penting
+
+```text
+index.html              Halaman utama aplikasi
+styles.css              Tampilan aplikasi
+app.js                  Logika peta, login, komentar, foto
+firebase-config.js      File koneksi Firebase
+setup-wizard.html       Pembuat firebase-config.js tanpa coding
+firestore.rules         Aturan keamanan database
+storage.rules           Aturan keamanan upload foto
+README.md               Panduan ini
+```
+
+## Catatan keamanan
+
+`firebase-config.js` memang akan terlihat publik di browser. Itu normal untuk Firebase Web App. Keamanan data tetap diatur lewat `firestore.rules`, `storage.rules`, dan Authorized domains.
+
+## Jika login error
+
+- Error `auth/unauthorized-domain`: tambahkan domain GitHub Pages ke Authorized domains di Firebase Authentication.
+- Error `permission-denied`: rules Firestore belum dipublish atau belum sesuai.
+- Error `storage/unauthorized`: rules Storage belum dipublish atau user belum login.
+
+## Batas area peta
+
+Peta dikunci ke area Kota Malang memakai koordinat batas kasar:
 
 ```js
-const MALANG_BOUNDS = [
+[
   [-8.075, 112.505],
   [-7.865, 112.755]
-];
+]
 ```
 
-## 8. Catatan penting produksi
-
-- Rules bawaan sudah cukup untuk prototipe publik kecil, tapi tetap pantau penggunaan Firebase.
-- Aktifkan Firebase App Check jika trafik mulai besar atau rawan spam.
-- Untuk moderasi serius, idealnya tambahkan halaman admin atau Cloud Functions.
-- Karena ini static app, semua validasi berat tidak boleh hanya mengandalkan JavaScript; rules tetap wajib.
+Kalau nanti kamu ingin peta melebar sampai Kabupaten Malang atau Batu, nilai batas ini bisa disesuaikan di `app.js` pada bagian `MALANG_BOUNDS`.

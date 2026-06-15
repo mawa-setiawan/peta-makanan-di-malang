@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Setup Wizard Firebase - Peta Kuliner Malang</title>
+  <style>
+    :root { --bg:#fff7ed; --card:#fffdf8; --text:#251913; --muted:#766454; --accent:#d95d18; --line:#ead7bf; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; color:var(--text); background:radial-gradient(circle at top left,#ffe0b5,var(--bg) 34rem,#fffaf3); }
+    main { width:min(980px, 100%); margin:0 auto; padding:28px; }
+    .card { margin:18px 0; padding:22px; border:1px solid var(--line); border-radius:24px; background:rgba(255,253,248,.94); box-shadow:0 18px 45px rgba(83,45,18,.12); }
+    h1 { margin:0 0 8px; font-size:clamp(1.8rem,4vw,2.8rem); line-height:1.05; }
+    h2 { margin:0 0 12px; }
+    p, li { color:var(--muted); line-height:1.65; }
+    code { padding:.13rem .32rem; border-radius:8px; background:#ffedd5; color:#7c2d12; }
+    textarea { width:100%; min-height:230px; padding:14px; border:1px solid #e8ceb4; border-radius:16px; background:#fffaf4; font:14px ui-monospace, SFMono-Regular, Consolas, monospace; color:#2b211b; outline:none; }
+    textarea:focus { border-color:rgba(217,93,24,.7); box-shadow:0 0 0 4px rgba(217,93,24,.12); }
+    button, a.button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 18px; border:0; border-radius:999px; color:white; background:linear-gradient(135deg,var(--accent),#f1852f); font:800 15px Inter, system-ui, sans-serif; text-decoration:none; cursor:pointer; box-shadow:0 12px 24px rgba(217,93,24,.22); }
+    .ghost { color:#a83f0d; background:#fff4e7; border:1px solid #f1d5bb; box-shadow:none; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .ok { padding:12px 14px; border-radius:16px; background:#dcfce7; color:#14532d; }
+    .warn { padding:12px 14px; border-radius:16px; background:#ffedd5; color:#7c2d12; }
+    .error { padding:12px 14px; border-radius:16px; background:#ffe4e6; color:#881337; }
+    .steps { counter-reset:step; list-style:none; padding:0; }
+    .steps li { position:relative; padding-left:48px; margin:14px 0; }
+    .steps li::before { counter-increment:step; content:counter(step); position:absolute; left:0; top:2px; width:32px; height:32px; display:grid; place-items:center; border-radius:50%; background:#ffedd5; color:#a83f0d; font-weight:900; }
+    .small { font-size:.9rem; }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <p class="small"><strong>Setup tanpa coding</strong></p>
+      <h1>Sambungkan Peta Kuliner Malang ke Firebase</h1>
+      <p>Halaman ini tugasnya membuat file <code>firebase-config.js</code> secara otomatis dari konfigurasi Firebase yang kamu salin. Kamu tidak perlu mengedit kode manual.</p>
+      <div class="row">
+        <a class="button ghost" href="index.html">← Kembali ke aplikasi</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Yang tetap harus kamu lakukan di akun Google</h2>
+      <ol class="steps">
+        <li>Buka Firebase Console, buat project baru, misalnya <strong>malang-food-map</strong>.</li>
+        <li>Di Project Overview, tekan ikon Web <strong>&lt;/&gt;</strong>, beri nama app, lalu Register app.</li>
+        <li>Salin bagian konfigurasi yang bentuknya seperti <code>const firebaseConfig = { ... }</code>.</li>
+        <li>Tempel konfigurasi itu di kotak bawah, lalu klik <strong>Buat file firebase-config.js</strong>.</li>
+        <li>Upload file hasil download untuk mengganti <code>firebase-config.js</code> lama di GitHub.</li>
+      </ol>
+      <p class="warn"><strong>Kenapa tidak bisa 100% otomatis?</strong><br />Karena pembuatan project Firebase, aktivasi Google login, database, dan storage harus dilakukan dari akun Google pemilik aplikasi. Aku tidak bisa mengambil alih izin akunmu dari sini.</p>
+    </section>
+
+    <section class="card">
+      <h2>Tempel konfigurasi Firebase di sini</h2>
+      <textarea id="configInput" spellcheck="false" placeholder="Contoh:
+const firebaseConfig = {
+  apiKey: 'AIza...',
+  authDomain: 'nama-project.firebaseapp.com',
+  projectId: 'nama-project',
+  storageBucket: 'nama-project.appspot.com',
+  messagingSenderId: '123456789',
+  appId: '1:123456789:web:abc123'
+};"></textarea>
+      <p id="status" class="small"></p>
+      <div class="row">
+        <button id="generateButton" type="button">Buat file firebase-config.js</button>
+        <button id="copyButton" class="ghost" type="button">Salin isi file</button>
+      </div>
+    </section>
+
+    <section id="outputCard" class="card hidden">
+      <h2>Hasil file</h2>
+      <p class="ok">File siap. Download lalu upload ke GitHub repository kamu, ganti file <code>firebase-config.js</code> lama.</p>
+      <textarea id="output" readonly spellcheck="false"></textarea>
+      <div class="row">
+        <button id="downloadButton" type="button">Download firebase-config.js</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Checklist Firebase setelah config dibuat</h2>
+      <ol class="steps">
+        <li>Authentication → Sign-in method → aktifkan <strong>Google</strong>.</li>
+        <li>Authentication → Settings → Authorized domains → tambahkan domain GitHub Pages kamu, misalnya <code>username.github.io</code>.</li>
+        <li>Firestore Database → Rules → tempel isi file <code>firestore.rules</code> → Publish.</li>
+        <li>Storage → Rules → tempel isi file <code>storage.rules</code> → Publish.</li>
+        <li>Refresh halaman GitHub Pages kamu, lalu coba login.</li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+    const input = document.getElementById('configInput');
+    const status = document.getElementById('status');
+    const outputCard = document.getElementById('outputCard');
+    const output = document.getElementById('output');
+    const generateButton = document.getElementById('generateButton');
+    const downloadButton = document.getElementById('downloadButton');
+    const copyButton = document.getElementById('copyButton');
+
+    generateButton.addEventListener('click', () => {
+      try {
+        const config = parseFirebaseConfig(input.value);
+        validateConfig(config);
+        const js = makeConfigFile(config);
+        output.value = js;
+        outputCard.classList.remove('hidden');
+        status.className = 'ok';
+        status.textContent = 'Berhasil membaca konfigurasi. File firebase-config.js sudah bisa didownload.';
+      } catch (error) {
+        status.className = 'error';
+        status.textContent = error.message;
+      }
+    });
+
+    copyButton.addEventListener('click', async () => {
+      if (!output.value) generateButton.click();
+      if (!output.value) return;
+      await navigator.clipboard.writeText(output.value);
+      status.className = 'ok';
+      status.textContent = 'Isi file sudah disalin.';
+    });
+
+    downloadButton.addEventListener('click', () => {
+      const blob = new Blob([output.value], { type: 'text/javascript;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'firebase-config.js';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    function parseFirebaseConfig(text) {
+      const trimmed = String(text || '').trim();
+      if (!trimmed) throw new Error('Kotaknya masih kosong. Tempel konfigurasi Firebase dulu.');
+
+      const objectMatch = trimmed.match(/firebaseConfig\s*=\s*(\{[\s\S]*?\})\s*;?/);
+      let objectText = objectMatch ? objectMatch[1] : trimmed;
+
+      if (!objectText.startsWith('{')) {
+        const braceStart = trimmed.indexOf('{');
+        const braceEnd = trimmed.lastIndexOf('}');
+        if (braceStart >= 0 && braceEnd > braceStart) objectText = trimmed.slice(braceStart, braceEnd + 1);
+      }
+
+      try {
+        const normalized = objectText
+          .replace(/([,{]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')
+          .replace(/'/g, '"')
+          .replace(/,\s*}/g, '}');
+        return JSON.parse(normalized);
+      } catch (jsonError) {
+        try {
+          return Function('"use strict"; return (' + objectText + ');')();
+        } catch (evalError) {
+          throw new Error('Konfigurasi belum terbaca. Pastikan yang ditempel bentuknya const firebaseConfig = { ... }; dari Firebase Console.');
+        }
+      }
+    }
+
+    function validateConfig(config) {
+      const required = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+      const missing = required.filter((key) => !config[key]);
+      if (missing.length) throw new Error('Ada data yang kurang: ' + missing.join(', ') + '. Salin ulang konfigurasi dari Firebase.');
+      if (!String(config.apiKey).startsWith('AIza')) throw new Error('apiKey terlihat tidak lengkap. Salin konfigurasi Firebase Web App, bukan konfigurasi Android/iOS.');
+    }
+
+    function makeConfigFile(config) {
+      return `// File ini dibuat otomatis oleh setup-wizard.html\n// Jangan taruh password di sini. Firebase config ini hanya identitas project web.\n\nwindow.MALANG_FOOD_MAP_FIREBASE_CONFIG = ${JSON.stringify(config, null, 2)};\n`;
+    }
+  </script>
+</body>
+</html>
