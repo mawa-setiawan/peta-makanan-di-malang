@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peta Kuliner Malang</title>
+  <meta name="description" content="Peta makanan kota Malang berbasis kontribusi warga: komentar, foto, dan makanan populer per area." />
+
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <noscript>
+    <div class="noscript">Aplikasi ini membutuhkan JavaScript untuk login, peta, dan kontribusi.</div>
+  </noscript>
+
+  <section id="authGate" class="auth-gate">
+    <div class="auth-card">
+      <div class="brand-mark">🍜</div>
+      <p class="eyebrow">Kota Malang</p>
+      <h1>Peta Kuliner Malang</h1>
+      <p class="lead">
+        Masuk dengan Google untuk melihat, menambah komentar, dan mengunggah gambar.
+        Kontribusi tersimpan dengan identitas akun agar data lebih bertanggung jawab.
+      </p>
+      <button id="loginButton" class="primary-button">Masuk dengan Google</button>
+      <p id="authMessage" class="small muted"></p>
+      <div class="setup-warning" id="setupWarning" hidden>
+        Firebase belum dikonfigurasi. Buka <code>firebase-config.js</code>, lalu tempel konfigurasi Firebase Web App kamu.
+      </div>
+    </div>
+  </section>
+
+  <div id="appShell" class="app-shell hidden">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Community food map</p>
+        <h1>Peta Kuliner Malang</h1>
+      </div>
+      <div class="topbar-actions">
+        <div id="userChip" class="user-chip"></div>
+        <button id="logoutButton" class="ghost-button">Keluar</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar left-sidebar">
+        <section class="panel hero-panel">
+          <h2>Tambah kontribusi</h2>
+          <p>Klik tombol ini, lalu klik lokasi kuliner di peta kota Malang.</p>
+          <button id="addPointButton" class="primary-button full">Tambah titik kuliner</button>
+          <p id="mapHint" class="hint">Mode tambah belum aktif.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Filter</h2>
+          <label class="field-label" for="searchInput">Cari makanan / tempat</label>
+          <input id="searchInput" class="input" type="search" placeholder="Contoh: bakso, rawon, lalapan..." />
+
+          <div class="two-columns">
+            <div>
+              <label class="field-label" for="areaFilter">Area</label>
+              <select id="areaFilter" class="input"></select>
+            </div>
+            <div>
+              <label class="field-label" for="categoryFilter">Kategori</label>
+              <select id="categoryFilter" class="input"></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-title-row">
+            <h2>Makanan populer</h2>
+            <span id="totalPlaces" class="badge">0 titik</span>
+          </div>
+          <div id="popularList" class="popular-list empty-state">Belum ada data.</div>
+        </section>
+
+        <section class="panel place-list-panel">
+          <h2>Daftar titik</h2>
+          <div id="placeList" class="place-list empty-state">Belum ada kontribusi.</div>
+        </section>
+      </aside>
+
+      <section class="map-wrap">
+        <div id="map" aria-label="Peta Kota Malang"></div>
+        <div class="map-badge">Area dibatasi sekitar Kota Malang</div>
+      </section>
+
+      <aside id="detailPanel" class="sidebar right-sidebar detail-panel">
+        <section class="panel detail-empty" id="detailEmpty">
+          <h2>Pilih titik kuliner</h2>
+          <p>Klik marker di peta atau item di daftar untuk melihat foto dan komentar.</p>
+        </section>
+
+        <section class="panel detail-content hidden" id="detailContent">
+          <button id="closeDetailButton" class="icon-button" aria-label="Tutup detail">×</button>
+          <div id="detailBody"></div>
+
+          <form id="commentForm" class="comment-form">
+            <label class="field-label" for="commentText">Komentar</label>
+            <textarea id="commentText" class="input" rows="3" maxlength="700" placeholder="Tulis pengalamanmu di tempat ini..."></textarea>
+            <button class="primary-button full" type="submit">Kirim komentar</button>
+          </form>
+
+          <div id="commentsList" class="comments-list"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="placeDialog" class="dialog">
+    <form id="placeForm" method="dialog" class="dialog-card">
+      <button id="cancelDialogButton" type="button" class="icon-button dialog-close" aria-label="Tutup">×</button>
+      <p class="eyebrow">Kontribusi baru</p>
+      <h2>Tambah titik kuliner</h2>
+      <p id="selectedPointText" class="small muted"></p>
+
+      <label class="field-label" for="placeNameInput">Nama tempat</label>
+      <input id="placeNameInput" class="input" required maxlength="90" placeholder="Contoh: Bakso Cak Man" />
+
+      <label class="field-label" for="foodNameInput">Makanan yang populer</label>
+      <input id="foodNameInput" class="input" required maxlength="60" placeholder="Contoh: bakso halus, rawon, soto ayam" />
+
+      <div class="two-columns">
+        <div>
+          <label class="field-label" for="areaInput">Area</label>
+          <select id="areaInput" class="input" required></select>
+        </div>
+        <div>
+          <label class="field-label" for="categoryInput">Kategori</label>
+          <select id="categoryInput" class="input" required></select>
+        </div>
+      </div>
+
+      <div class="two-columns">
+        <div>
+          <label class="field-label" for="priceInput">Kisaran harga</label>
+          <input id="priceInput" class="input" maxlength="40" placeholder="Contoh: 10k-25k" />
+        </div>
+        <label class="checkbox-field">
+          <input id="halalInput" type="checkbox" checked />
+          <span>Menurutku halal / muslim friendly</span>
+        </label>
+      </div>
+
+      <label class="field-label" for="descriptionInput">Catatan singkat</label>
+      <textarea id="descriptionInput" class="input" rows="4" maxlength="900" placeholder="Apa yang paling enak, jam ramai, parkir, suasana, dll."></textarea>
+
+      <label class="field-label" for="photoInput">Foto makanan / tempat, maksimal 4 foto</label>
+      <input id="photoInput" class="input file-input" type="file" accept="image/*" multiple />
+
+      <div class="dialog-actions">
+        <button id="savePlaceButton" class="primary-button" type="submit">Simpan kontribusi</button>
+      </div>
+      <p id="formMessage" class="small muted"></p>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

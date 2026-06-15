@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isPlaceOwner() {
+      return signedIn() && request.auth.uid == resource.data.author.uid;
+    }
+
+    function isNewPlaceOwner() {
+      return signedIn() && request.resource.data.author.uid == request.auth.uid;
+    }
+
+    match /places/{placeId} {
+      allow read: if signedIn();
+
+      allow create: if isNewPlaceOwner()
+        && request.resource.data.placeName is string
+        && request.resource.data.foodName is string
+        && request.resource.data.area is string
+        && request.resource.data.category is string
+        && request.resource.data.lat is number
+        && request.resource.data.lng is number;
+
+      allow update, delete: if isPlaceOwner();
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+
+        allow create: if signedIn()
+          && request.resource.data.author.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 700;
+
+        allow update, delete: if signedIn() && request.auth.uid == resource.data.author.uid;
+      }
+    }
+  }
+}
