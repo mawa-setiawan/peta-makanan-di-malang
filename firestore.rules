@@ -1,42 +1,83 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
+    function text(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
     }
 
-    function isPlaceOwner() {
-      return signedIn() && request.auth.uid == resource.data.author.uid;
+    function validArea(value) {
+      return value in ['Klojen', 'Lowokwaru', 'Blimbing', 'Sukun', 'Kedungkandang'];
     }
 
-    function isNewPlaceOwner() {
-      return signedIn() && request.resource.data.author.uid == request.auth.uid;
+    function validCategory(value) {
+      return value in [
+        'Bakso & mie',
+        'Nasi & lalapan',
+        'Soto/rawon/sup',
+        'Jajanan pasar',
+        'Kopi & dessert',
+        'Seafood',
+        'Ayam/bebek',
+        'Vegetarian',
+        'Lainnya'
+      ];
+    }
+
+    function validAuthor(author) {
+      return author is map
+        && text(author.visitorId, 8, 80)
+        && text(author.name, 2, 80)
+        && text(author.emailMasked, 5, 140)
+        && author.profileMode == 'manual-name-email';
+    }
+
+    function validPlaceData(data) {
+      return text(data.placeName, 1, 120)
+        && text(data.foodName, 1, 80)
+        && validArea(data.area)
+        && validCategory(data.category)
+        && data.lat is number
+        && data.lng is number
+        && data.lat >= -8.075
+        && data.lat <= -7.865
+        && data.lng >= 112.505
+        && data.lng <= 112.755
+        && data.photoUrls is list
+        && data.photoUrls.size() <= 8
+        && validAuthor(data.author);
+    }
+
+    function validContributorData(data) {
+      return text(data.visitorId, 8, 80)
+        && text(data.name, 2, 80)
+        && text(data.email, 5, 140)
+        && text(data.emailMasked, 5, 140);
     }
 
     match /places/{placeId} {
-      allow read: if signedIn();
+      allow read: if true;
+      allow create: if validPlaceData(request.resource.data);
 
-      allow create: if isNewPlaceOwner()
-        && request.resource.data.placeName is string
-        && request.resource.data.foodName is string
-        && request.resource.data.area is string
-        && request.resource.data.category is string
-        && request.resource.data.lat is number
-        && request.resource.data.lng is number;
+      // Aplikasi membuat dokumen tempat dulu, lalu mengisi photoUrls setelah upload Storage selesai.
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoUrls', 'updatedAt'])
+        && request.resource.data.photoUrls is list
+        && request.resource.data.photoUrls.size() <= 8;
 
-      allow update, delete: if isPlaceOwner();
+      allow delete: if false;
 
       match /comments/{commentId} {
-        allow read: if signedIn();
-
-        allow create: if signedIn()
-          && request.resource.data.author.uid == request.auth.uid
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 700;
-
-        allow update, delete: if signedIn() && request.auth.uid == resource.data.author.uid;
+        allow read: if true;
+        allow create: if text(request.resource.data.text, 1, 700)
+          && validAuthor(request.resource.data.author);
+        allow update, delete: if false;
       }
+    }
+
+    // Data ini tidak dibaca oleh aplikasi publik. Pemilik project bisa melihatnya dari Firebase Console.
+    match /privateContributors/{visitorId} {
+      allow read, list: if false;
+      allow create, update: if validContributorData(request.resource.data);
+      allow delete: if false;
     }
   }
 }

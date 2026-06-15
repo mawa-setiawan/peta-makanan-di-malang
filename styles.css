@@ -614,3 +614,55 @@ textarea.input {
     white-space: nowrap;
   }
 }
+
+.text-left {
+  text-align: left;
+}
+
+.privacy-note {
+  margin: 0.85rem 0 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #f0d5bb;
+  border-radius: 16px;
+  color: #6b4d3d;
+  background: #fff4e7;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.7rem;
+  border: 1px solid #f1d5bb;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: #fff4e7;
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.avatar-letter {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: white;
+  background: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.small-avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 0.76rem;
+}
+
+.auth-card .input {
+  text-align: left;
+}

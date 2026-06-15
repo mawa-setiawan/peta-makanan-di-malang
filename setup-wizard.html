@@ -33,7 +33,7 @@
   <main>
     <section class="card">
       <p class="small"><strong>Setup tanpa coding</strong></p>
-      <h1>Sambungkan Peta Kuliner Malang ke Firebase</h1>
+      <h1>Sambungkan Peta Kuliner Malang ke Database Online</h1>
       <p>Halaman ini tugasnya membuat file <code>firebase-config.js</code> secara otomatis dari konfigurasi Firebase yang kamu salin. Kamu tidak perlu mengedit kode manual.</p>
       <div class="row">
         <a class="button ghost" href="index.html">← Kembali ke aplikasi</a>
@@ -49,7 +49,7 @@
         <li>Tempel konfigurasi itu di kotak bawah, lalu klik <strong>Buat file firebase-config.js</strong>.</li>
         <li>Upload file hasil download untuk mengganti <code>firebase-config.js</code> lama di GitHub.</li>
       </ol>
-      <p class="warn"><strong>Kenapa tidak bisa 100% otomatis?</strong><br />Karena pembuatan project Firebase, aktivasi Google login, database, dan storage harus dilakukan dari akun Google pemilik aplikasi. Aku tidak bisa mengambil alih izin akunmu dari sini.</p>
+      <p class="warn"><strong>Kenapa tidak bisa 100% otomatis?</strong><br />Karena pembuatan project Firebase, aktivasi database dan storage harus dilakukan dari akun Google pemilik aplikasi. Aku tidak bisa mengambil alih izin akunmu dari sini.</p>
     </section>
 
     <section class="card">
@@ -80,13 +80,13 @@ const firebaseConfig = {
     </section>
 
     <section class="card">
-      <h2>Checklist Firebase setelah config dibuat</h2>
+      <h2>Checklist Firebase setelah file config dibuat</h2>
       <ol class="steps">
-        <li>Authentication → Sign-in method → aktifkan <strong>Google</strong>.</li>
-        <li>Authentication → Settings → Authorized domains → tambahkan domain GitHub Pages kamu, misalnya <code>username.github.io</code>.</li>
+        <li>Firestore Database → Create database.</li>
+        <li>Storage → Get started / mulai aktifkan Storage.</li>
         <li>Firestore Database → Rules → tempel isi file <code>firestore.rules</code> → Publish.</li>
         <li>Storage → Rules → tempel isi file <code>storage.rules</code> → Publish.</li>
-        <li>Refresh halaman GitHub Pages kamu, lalu coba login.</li>
+        <li>Refresh halaman GitHub Pages kamu, lalu coba isi nama + email dan tambah titik.</li>
       </ol>
     </section>
   </main>

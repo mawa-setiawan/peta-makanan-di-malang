@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Peta Kuliner Malang</title>
-  <meta name="description" content="Peta kontribusi kuliner Kota Malang berbasis login Google, komentar, dan foto." />
+  <meta name="description" content="Peta kontribusi kuliner Kota Malang berbasis nama dan email kontributor, komentar, dan foto." />
   <link rel="preconnect" href="https://www.gstatic.com" />
   <link rel="preconnect" href="https://tile.openstreetmap.org" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQnyFiaEE3J4sQI4jlbEw5gr3xRroA=" crossorigin="" />
@@ -12,22 +12,32 @@
 </head>
 <body>
   <noscript>
-    <div class="noscript">Aplikasi ini membutuhkan JavaScript agar peta, login Google, komentar, dan upload foto bisa berjalan.</div>
+    <div class="noscript">Aplikasi ini membutuhkan JavaScript agar peta, komentar, dan upload foto bisa berjalan.</div>
   </noscript>
 
-  <section id="authGate" class="auth-gate">
-    <div class="auth-card">
+  <section id="profileGate" class="auth-gate">
+    <form id="profileForm" class="auth-card">
       <div class="brand-mark">🍜</div>
       <p class="eyebrow">Kota Malang</p>
       <h1>Peta Kuliner Kontributor</h1>
-      <p class="lead">Masuk dengan Google untuk menjaga integritas kontribusi. Setelah login, kamu bisa menambahkan titik makanan, foto, dan komentar pengalaman.</p>
-      <button id="loginButton" class="primary-button full">Masuk dengan Google</button>
-      <p id="authMessage" class="hint"></p>
+      <p class="lead">Sebelum masuk, isi nama dan email. Data ini dipakai sebagai identitas kontribusi agar titik makanan dan komentar tidak anonim.</p>
+
+      <label class="field-label text-left" for="visitorNameInput">Nama</label>
+      <input id="visitorNameInput" class="input" type="text" autocomplete="name" required maxlength="80" placeholder="contoh: Mawa" />
+
+      <label class="field-label text-left" for="visitorEmailInput">Alamat email</label>
+      <input id="visitorEmailInput" class="input" type="email" autocomplete="email" required maxlength="120" placeholder="contoh: nama@email.com" />
+
+      <p class="privacy-note">Nama akan tampil di kontribusi. Email ditampilkan tersamarkan di halaman publik, tetapi pemilik database tetap bisa melihat email lengkap di data kontributor.</p>
+
+      <button id="continueButton" class="primary-button full" type="submit">Lanjut ke peta</button>
+      <p id="profileMessage" class="hint"></p>
+
       <div id="setupWarning" class="setup-warning" hidden>
-        <strong>Firebase belum tersambung.</strong><br />
-        Buka <a href="setup-wizard.html">Setup Wizard</a>, tempel konfigurasi Firebase dari akunmu, lalu unduh file <code>firebase-config.js</code>. Ini bukan coding, hanya proses sambung database dan login Google.
+        <strong>Mode lokal/demo.</strong><br />
+        Firebase belum tersambung, jadi data hanya tersimpan di browser ini dan tidak akan terlihat oleh pengunjung lain. Untuk mode publik, buka <a href="setup-wizard.html">Setup Wizard</a> lalu sambungkan Firebase.
       </div>
-    </div>
+    </form>
   </section>
 
   <section id="appShell" class="app-shell hidden">
@@ -37,8 +47,9 @@
         <h1>Temukan makanan paling populer per area</h1>
       </div>
       <div class="topbar-actions">
+        <div id="modeChip" class="mode-chip"></div>
         <div id="userChip" class="user-chip"></div>
-        <button id="logoutButton" class="ghost-button">Keluar</button>
+        <button id="changeIdentityButton" class="ghost-button">Ganti identitas</button>
       </div>
     </header>
 
@@ -46,7 +57,7 @@
       <aside class="sidebar left-sidebar">
         <section class="panel hero-panel">
           <h2>Kontribusi titik kuliner</h2>
-          <p class="lead small">Klik tombol tambah, lalu klik lokasi di peta Kota Malang. Setiap titik akan mencatat nama akun Google kontributor.</p>
+          <p class="lead small">Klik tombol tambah, lalu klik lokasi di peta Kota Malang. Setiap titik akan mencatat nama dan email tersamarkan dari kontributor.</p>
           <button id="addPointButton" class="primary-button full">Tambah titik kuliner</button>
           <p id="mapHint" class="hint">Mode tambah belum aktif.</p>
         </section>
@@ -151,7 +162,7 @@
 
       <label class="field-label" for="photoInput">Foto makanan/tempat</label>
       <input id="photoInput" class="input file-input" type="file" accept="image/*" multiple />
-      <p class="hint">Maksimal 4 foto, 5 MB per foto.</p>
+      <p class="hint">Maksimal 4 foto, 5 MB per foto. Foto akan tersimpan online jika Firebase sudah tersambung.</p>
 
       <p id="formMessage" class="hint"></p>
       <div class="dialog-actions">

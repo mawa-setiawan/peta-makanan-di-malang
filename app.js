@@ -1,12 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getAuth,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import {
   addDoc,
   collection,
   doc,
@@ -15,11 +8,10 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import {
-  getFirestore
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {
   getDownloadURL,
   getStorage,
@@ -54,13 +46,21 @@ const CATEGORIES = [
   "Lainnya"
 ];
 
+const PROFILE_STORAGE_KEY = "malangFoodMap.visitorProfile.v1";
+const LOCAL_PLACES_KEY = "malangFoodMap.localPlaces.v1";
+const LOCAL_COMMENTS_KEY = "malangFoodMap.localComments.v1";
+
 const elements = {
-  authGate: document.getElementById("authGate"),
-  appShell: document.getElementById("appShell"),
+  profileGate: document.getElementById("profileGate"),
+  profileForm: document.getElementById("profileForm"),
+  visitorNameInput: document.getElementById("visitorNameInput"),
+  visitorEmailInput: document.getElementById("visitorEmailInput"),
+  continueButton: document.getElementById("continueButton"),
+  profileMessage: document.getElementById("profileMessage"),
   setupWarning: document.getElementById("setupWarning"),
-  loginButton: document.getElementById("loginButton"),
-  logoutButton: document.getElementById("logoutButton"),
-  authMessage: document.getElementById("authMessage"),
+  appShell: document.getElementById("appShell"),
+  modeChip: document.getElementById("modeChip"),
+  changeIdentityButton: document.getElementById("changeIdentityButton"),
   userChip: document.getElementById("userChip"),
   addPointButton: document.getElementById("addPointButton"),
   mapHint: document.getElementById("mapHint"),
@@ -94,10 +94,9 @@ const elements = {
 };
 
 let app;
-let auth;
 let db;
 let storage;
-let currentUser = null;
+let visitorProfile = null;
 let map;
 let addMode = false;
 let selectedLatLng = null;
@@ -113,54 +112,32 @@ fillSelect(elements.categoryFilter, ["Semua kategori", ...CATEGORIES], ["", ...C
 fillSelect(elements.areaInput, AREAS, AREAS);
 fillSelect(elements.categoryInput, CATEGORIES, CATEGORIES);
 
-if (!firebaseConfigured) {
-  elements.setupWarning.hidden = false;
-  elements.loginButton.disabled = true;
-  elements.authMessage.textContent = "Konfigurasi Firebase belum diisi, jadi login belum bisa dipakai.";
-} else {
+if (firebaseConfigured) {
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-  bindAuth();
+  elements.setupWarning.hidden = true;
+} else {
+  elements.setupWarning.hidden = false;
 }
 
 bindUi();
-
-function bindAuth() {
-  onAuthStateChanged(auth, (user) => {
-    currentUser = user;
-
-    if (user) {
-      elements.authGate.classList.add("hidden");
-      elements.appShell.classList.remove("hidden");
-      renderUserChip(user);
-      initMapOnce();
-      subscribePlacesOnce();
-      setTimeout(() => map?.invalidateSize(), 120);
-    } else {
-      elements.authGate.classList.remove("hidden");
-      elements.appShell.classList.add("hidden");
-      cleanupRealtime();
-    }
-  });
-}
+restoreProfile();
 
 function bindUi() {
-  elements.loginButton.addEventListener("click", async () => {
-    if (!firebaseConfigured) return;
-    elements.authMessage.textContent = "Membuka login Google...";
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, provider);
-      elements.authMessage.textContent = "";
-    } catch (error) {
-      elements.authMessage.textContent = readableError(error);
-    }
+  elements.profileForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveVisitorProfileFromForm();
   });
 
-  elements.logoutButton.addEventListener("click", () => signOut(auth));
+  elements.changeIdentityButton.addEventListener("click", () => {
+    localStorage.removeItem(PROFILE_STORAGE_KEY);
+    visitorProfile = null;
+    cleanupRealtime();
+    elements.appShell.classList.add("hidden");
+    elements.profileGate.classList.remove("hidden");
+    elements.profileMessage.textContent = "Silakan isi identitas baru.";
+  });
 
   elements.addPointButton.addEventListener("click", () => {
     addMode = !addMode;
@@ -187,6 +164,62 @@ function bindUi() {
     event.preventDefault();
     await saveComment();
   });
+}
+
+function restoreProfile() {
+  const stored = safeJsonParse(localStorage.getItem(PROFILE_STORAGE_KEY));
+  if (stored?.name && isValidEmail(stored?.email)) {
+    visitorProfile = stored;
+    enterApp();
+    return;
+  }
+
+  elements.profileGate.classList.remove("hidden");
+  elements.appShell.classList.add("hidden");
+}
+
+async function saveVisitorProfileFromForm() {
+  const name = elements.visitorNameInput.value.trim().replace(/\s+/g, " ");
+  const email = elements.visitorEmailInput.value.trim().toLowerCase();
+
+  if (name.length < 2) {
+    elements.profileMessage.textContent = "Nama terlalu pendek.";
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    elements.profileMessage.textContent = "Format email belum benar.";
+    return;
+  }
+
+  visitorProfile = {
+    id: getOrCreateVisitorId(),
+    name,
+    email,
+    emailMasked: maskEmail(email),
+    createdAtLocal: new Date().toISOString()
+  };
+
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(visitorProfile));
+  elements.profileMessage.textContent = "Menyimpan identitas...";
+
+  try {
+    await upsertPrivateContributor();
+  } catch (error) {
+    console.warn(error);
+  }
+
+  enterApp();
+}
+
+function enterApp() {
+  elements.profileGate.classList.add("hidden");
+  elements.appShell.classList.remove("hidden");
+  renderUserChip();
+  renderModeChip();
+  initMapOnce();
+  subscribePlacesOnce();
+  setTimeout(() => map?.invalidateSize(), 120);
 }
 
 function initMapOnce() {
@@ -228,14 +261,19 @@ function initMapOnce() {
 }
 
 function subscribePlacesOnce() {
-  if (unsubscribePlaces) return;
-  const placesQuery = query(collection(db, "places"), orderBy("createdAt", "desc"), limit(500));
-  unsubscribePlaces = onSnapshot(placesQuery, (snapshot) => {
-    allPlaces = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  if (firebaseConfigured) {
+    if (unsubscribePlaces) return;
+    const placesQuery = query(collection(db, "places"), orderBy("createdAt", "desc"), limit(500));
+    unsubscribePlaces = onSnapshot(placesQuery, (snapshot) => {
+      allPlaces = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+      renderAll();
+    }, (error) => {
+      elements.placeList.textContent = readableError(error);
+    });
+  } else {
+    allPlaces = getLocalPlaces();
     renderAll();
-  }, (error) => {
-    elements.placeList.textContent = readableError(error);
-  });
+  }
 }
 
 function cleanupRealtime() {
@@ -381,9 +419,7 @@ function selectPlace(placeId, fly = false) {
   subscribeComments(place.id);
 
   const marker = markers.get(place.id);
-  if (marker) {
-    marker.openPopup();
-  }
+  if (marker) marker.openPopup();
   if (fly && map && typeof place.lat === "number" && typeof place.lng === "number") {
     map.flyTo([place.lat, place.lng], Math.max(map.getZoom(), 16), { duration: 0.7 });
   }
@@ -394,8 +430,8 @@ function renderPlaceDetail(place) {
     ? `<div class="detail-photos">${place.photoUrls.slice(0, 8).map((url) => `<img src="${escapeAttribute(url)}" alt="Foto ${escapeAttribute(place.foodName || "kuliner")}" loading="lazy" />`).join("")}</div>`
     : `<p class="empty-state">Belum ada foto untuk titik ini.</p>`;
 
-  const authorPhoto = place.author?.photoURL ? `<img src="${escapeAttribute(place.author.photoURL)}" alt="" />` : "";
-  const authorName = place.author?.displayName || "Kontributor";
+  const authorName = place.author?.name || place.author?.displayName || "Kontributor";
+  const authorEmail = place.author?.emailMasked || "email tersimpan";
 
   elements.detailBody.innerHTML = `
     <p class="eyebrow">${escapeHtml(place.area || "Kota Malang")}</p>
@@ -406,7 +442,7 @@ function renderPlaceDetail(place) {
       ${place.priceRange ? `<span class="meta-pill">${escapeHtml(place.priceRange)}</span>` : ""}
       <span class="meta-pill">${place.halalFriendly ? "Muslim friendly" : "Cek lagi halal"}</span>
     </div>
-    <div class="author-row">${authorPhoto}<span>Ditambahkan oleh ${escapeHtml(authorName)} · ${formatDate(place.createdAt)}</span></div>
+    <div class="author-row"><span class="avatar-letter">${escapeHtml(initialLetter(authorName))}</span><span>Ditambahkan oleh ${escapeHtml(authorName)} · ${escapeHtml(authorEmail)} · ${formatDate(place.createdAt)}</span></div>
     ${photoHtml}
     ${place.description ? `<p>${escapeHtml(place.description)}</p>` : ""}
   `;
@@ -415,18 +451,22 @@ function renderPlaceDetail(place) {
 function subscribeComments(placeId) {
   if (unsubscribeComments) unsubscribeComments();
 
-  const commentsQuery = query(
-    collection(db, "places", placeId, "comments"),
-    orderBy("createdAt", "desc"),
-    limit(80)
-  );
+  if (firebaseConfigured) {
+    const commentsQuery = query(
+      collection(db, "places", placeId, "comments"),
+      orderBy("createdAt", "desc"),
+      limit(80)
+    );
 
-  unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
-    const comments = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    renderComments(comments);
-  }, (error) => {
-    elements.commentsList.textContent = readableError(error);
-  });
+    unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
+      const comments = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+      renderComments(comments);
+    }, (error) => {
+      elements.commentsList.textContent = readableError(error);
+    });
+  } else {
+    renderComments(getLocalComments(placeId));
+  }
 }
 
 function renderComments(comments) {
@@ -442,9 +482,9 @@ function renderComments(comments) {
   for (const comment of comments) {
     const div = document.createElement("div");
     div.className = "comment-item";
-    const photo = comment.author?.photoURL ? `<img src="${escapeAttribute(comment.author.photoURL)}" alt="" />` : "";
+    const authorName = comment.author?.name || comment.author?.displayName || "Kontributor";
     div.innerHTML = `
-      <div class="comment-head">${photo}<span>${escapeHtml(comment.author?.displayName || "Kontributor")}</span><span class="muted">${formatDate(comment.createdAt)}</span></div>
+      <div class="comment-head"><span class="avatar-letter small-avatar">${escapeHtml(initialLetter(authorName))}</span><span>${escapeHtml(authorName)}</span><span class="muted">${formatDate(comment.createdAt)}</span></div>
       <p>${escapeHtml(comment.text || "")}</p>
     `;
     elements.commentsList.appendChild(div);
@@ -479,7 +519,7 @@ function closePlaceDialog() {
 }
 
 async function savePlace() {
-  if (!currentUser || !selectedLatLng) return;
+  if (!visitorProfile || !selectedLatLng) return;
 
   const files = [...elements.photoInput.files].slice(0, 4);
   const tooLarge = files.find((file) => file.size > 5 * 1024 * 1024);
@@ -503,35 +543,56 @@ async function savePlace() {
       lat: selectedLatLng.lat,
       lng: selectedLatLng.lng,
       photoUrls: [],
-      author: userPayload(currentUser),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      author: publicAuthorPayload(),
+      createdAt: firebaseConfigured ? serverTimestamp() : new Date().toISOString(),
+      updatedAt: firebaseConfigured ? serverTimestamp() : new Date().toISOString()
     };
 
-    const placeRef = await addDoc(collection(db, "places"), payload);
+    let placeId;
 
-    const photoUrls = [];
-    for (const file of files) {
-      const safeName = file.name.replace(/[^a-z0-9_.-]/gi, "_").toLowerCase();
-      const storagePath = `places/${placeRef.id}/${Date.now()}_${safeName}`;
-      const storageRef = ref(storage, storagePath);
-      await uploadBytes(storageRef, file, { contentType: file.type || "image/jpeg" });
-      photoUrls.push(await getDownloadURL(storageRef));
-    }
+    if (firebaseConfigured) {
+      await upsertPrivateContributor();
+      const placeRef = await addDoc(collection(db, "places"), payload);
+      placeId = placeRef.id;
 
-    if (photoUrls.length) {
-      await updateDoc(doc(db, "places", placeRef.id), {
-        photoUrls,
-        updatedAt: serverTimestamp()
-      });
+      const photoUrls = [];
+      for (const file of files) {
+        const safeName = file.name.replace(/[^a-z0-9_.-]/gi, "_").toLowerCase();
+        const storagePath = `places/${placeRef.id}/${Date.now()}_${safeName}`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, file, { contentType: file.type || "image/jpeg" });
+        photoUrls.push(await getDownloadURL(storageRef));
+      }
+
+      if (photoUrls.length) {
+        await updateDoc(doc(db, "places", placeRef.id), {
+          photoUrls,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } else {
+      const localPhotoUrls = await filesToDataUrls(files.slice(0, 2));
+      const localPlace = {
+        ...payload,
+        id: makeId("local_place"),
+        photoUrls: localPhotoUrls
+      };
+      placeId = localPlace.id;
+      const places = getLocalPlaces();
+      places.unshift(localPlace);
+      localStorage.setItem(LOCAL_PLACES_KEY, JSON.stringify(places));
+      allPlaces = places;
+      renderAll();
     }
 
     elements.formMessage.textContent = "Berhasil disimpan.";
     addMode = false;
     elements.addPointButton.textContent = "Tambah titik kuliner";
-    elements.mapHint.textContent = "Kontribusi berhasil. Kamu bisa tambah titik lain kapan saja.";
+    elements.mapHint.textContent = firebaseConfigured
+      ? "Kontribusi berhasil tersimpan online."
+      : "Kontribusi berhasil tersimpan di browser ini. Sambungkan Firebase agar publik bisa melihatnya.";
     closePlaceDialog();
-    setTimeout(() => selectPlace(placeRef.id, true), 400);
+    setTimeout(() => selectPlace(placeId, true), 400);
   } catch (error) {
     elements.formMessage.textContent = readableError(error);
   } finally {
@@ -540,7 +601,7 @@ async function savePlace() {
 }
 
 async function saveComment() {
-  if (!currentUser || !selectedPlaceId) return;
+  if (!visitorProfile || !selectedPlaceId) return;
   const text = elements.commentText.value.trim();
   if (!text) return;
 
@@ -548,11 +609,26 @@ async function saveComment() {
   button.disabled = true;
 
   try {
-    await addDoc(collection(db, "places", selectedPlaceId, "comments"), {
-      text,
-      author: userPayload(currentUser),
-      createdAt: serverTimestamp()
-    });
+    if (firebaseConfigured) {
+      await upsertPrivateContributor();
+      await addDoc(collection(db, "places", selectedPlaceId, "comments"), {
+        text,
+        author: publicAuthorPayload(),
+        createdAt: serverTimestamp()
+      });
+    } else {
+      const allComments = getAllLocalComments();
+      const newComment = {
+        id: makeId("local_comment"),
+        text,
+        author: publicAuthorPayload(),
+        createdAt: new Date().toISOString()
+      };
+      allComments[selectedPlaceId] = [newComment, ...(allComments[selectedPlaceId] || [])];
+      localStorage.setItem(LOCAL_COMMENTS_KEY, JSON.stringify(allComments));
+      renderComments(allComments[selectedPlaceId]);
+    }
+
     elements.commentText.value = "";
   } catch (error) {
     alert(readableError(error));
@@ -561,9 +637,37 @@ async function saveComment() {
   }
 }
 
-function renderUserChip(user) {
-  const photo = user.photoURL ? `<img src="${escapeAttribute(user.photoURL)}" alt="" />` : "";
-  elements.userChip.innerHTML = `${photo}<span>${escapeHtml(user.displayName || user.email || "Pengguna")}</span>`;
+async function upsertPrivateContributor() {
+  if (!firebaseConfigured || !visitorProfile) return;
+  await setDoc(doc(db, "privateContributors", visitorProfile.id), {
+    visitorId: visitorProfile.id,
+    name: visitorProfile.name,
+    email: visitorProfile.email,
+    emailMasked: visitorProfile.emailMasked,
+    updatedAt: serverTimestamp(),
+    userAgent: navigator.userAgent.slice(0, 300)
+  }, { merge: true });
+}
+
+function renderUserChip() {
+  const name = visitorProfile?.name || "Pengguna";
+  elements.userChip.innerHTML = `<span class="avatar-letter">${escapeHtml(initialLetter(name))}</span><span>${escapeHtml(name)} · ${escapeHtml(visitorProfile?.emailMasked || "email")}</span>`;
+}
+
+function renderModeChip() {
+  elements.modeChip.textContent = firebaseConfigured ? "Online" : "Demo lokal";
+  elements.modeChip.title = firebaseConfigured
+    ? "Data tersimpan online di Firebase."
+    : "Data hanya tersimpan di browser ini karena Firebase belum tersambung.";
+}
+
+function publicAuthorPayload() {
+  return {
+    visitorId: visitorProfile.id,
+    name: visitorProfile.name,
+    emailMasked: visitorProfile.emailMasked,
+    profileMode: "manual-name-email"
+  };
 }
 
 function fillSelect(select, labels, values) {
@@ -605,15 +709,6 @@ function titleCase(value) {
     .join(" ");
 }
 
-function userPayload(user) {
-  return {
-    uid: user.uid,
-    displayName: user.displayName || user.email || "Pengguna",
-    email: user.email || "",
-    photoURL: user.photoURL || ""
-  };
-}
-
 function categoryEmoji(category) {
   const value = String(category || "").toLowerCase();
   if (value.includes("bakso") || value.includes("mie")) return "🍜";
@@ -640,6 +735,67 @@ function formatDate(timestamp) {
   }).format(date);
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function maskEmail(email) {
+  const [name, domain] = String(email || "").split("@");
+  if (!name || !domain) return "email tersimpan";
+  const visible = name.slice(0, Math.min(2, name.length));
+  return `${visible}${"*".repeat(Math.max(2, name.length - visible.length))}@${domain}`;
+}
+
+function initialLetter(name) {
+  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function getOrCreateVisitorId() {
+  const stored = safeJsonParse(localStorage.getItem(PROFILE_STORAGE_KEY));
+  if (stored?.id) return stored.id;
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  return `visitor_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function getLocalPlaces() {
+  const data = safeJsonParse(localStorage.getItem(LOCAL_PLACES_KEY));
+  return Array.isArray(data) ? data : [];
+}
+
+function getAllLocalComments() {
+  const data = safeJsonParse(localStorage.getItem(LOCAL_COMMENTS_KEY));
+  return data && typeof data === "object" ? data : {};
+}
+
+function getLocalComments(placeId) {
+  return getAllLocalComments()[placeId] || [];
+}
+
+function makeId(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function safeJsonParse(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+async function filesToDataUrls(files) {
+  const results = [];
+  for (const file of files) {
+    results.push(await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    }));
+  }
+  return results;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -655,14 +811,14 @@ function escapeAttribute(value) {
 
 function readableError(error) {
   const message = error?.message || String(error);
-  if (message.includes("auth/unauthorized-domain")) {
-    return "Domain belum diizinkan di Firebase Authentication. Tambahkan domain GitHub Pages kamu di Authorized domains.";
-  }
   if (message.includes("permission-denied")) {
-    return "Akses ditolak oleh Firebase Rules. Cek firestore.rules dan storage.rules.";
+    return "Akses ditolak oleh Firebase Rules. Cek firestore.rules dan storage.rules versi terbaru.";
   }
   if (message.includes("storage/unauthorized")) {
-    return "Upload gambar ditolak oleh Storage Rules. Cek aturan Storage dan pastikan sudah login.";
+    return "Upload gambar ditolak oleh Storage Rules. Cek aturan Storage.";
+  }
+  if (message.includes("Firebase")) {
+    return `${message} Pastikan firebase-config.js sudah dibuat lewat Setup Wizard.`;
   }
   return message;
 }

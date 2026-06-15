@@ -1,7 +1,6 @@
-// 1) Buat project di Firebase Console.
-// 2) Tambahkan Web App, lalu salin firebaseConfig dari Firebase ke bawah ini.
-// 3) Aktifkan Authentication > Google, Firestore Database, dan Storage.
-// 4) Tambahkan domain GitHub Pages kamu ke Authentication > Settings > Authorized domains.
+// File ini diisi otomatis lewat setup-wizard.html.
+// Tanpa file config Firebase yang benar, aplikasi tetap bisa dibuka sebagai demo lokal,
+// tetapi kontribusi tidak akan terlihat oleh orang lain.
 
 window.MALANG_FOOD_MAP_FIREBASE_CONFIG = {
   apiKey: "ISI_API_KEY_FIREBASE",
